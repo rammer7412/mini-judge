@@ -1,0 +1,15 @@
+# SSH / private keys (NEVER commit)
+*.pem
+*.ppk
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.crt
+*.p12
+
+# secrets
+.env
+.env.*
+secrets/
