@@ -5,23 +5,41 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Mini Judge</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 980px; margin: 24px auto; padding: 0 16px; }
+    :root { color-scheme: light; }
+    body { font-family: system-ui, sans-serif; max-width: 980px; margin: 24px auto; padding: 0 16px; line-height: 1.5; }
+    h1 { margin: 0 0 8px; }
+    h2 { margin: 24px 0 8px; }
+    h3 { margin: 18px 0 8px; }
+    .muted { color: #666; font-size: 13px; }
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     select, button { padding: 10px 12px; font-size: 14px; }
-    textarea { width: 100%; height: 360px; padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; }
-    pre { background:#f6f8fa; padding: 12px; white-space: pre-wrap; border-radius: 8px; }
-    .muted { color: #666; font-size: 13px; }
-    .card { border:1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-top: 16px; }
-    .pill { display:inline-block; padding:6px 10px; border:1px solid #e5e7eb; border-radius:999px; font-size:13px; margin-right:8px; background:#fafafa; }
-    h1 { margin: 0 0 8px; }
-    h2 { margin: 8px 0 10px; }
+    textarea { width: 100%; height: 360px; padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; box-sizing: border-box; }
+    pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    pre { background:#f6f8fa; padding: 12px; white-space: pre-wrap; border: 1px solid #e5e7eb; border-radius: 8px; overflow: auto; }
+
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; background: #fff; }
+    .grid { display: grid; gap: 12px; }
+    .meta { display:flex; gap: 10px; flex-wrap: wrap; align-items:center; }
+    .pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #f3f4f6; border: 1px solid #e5e7eb; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 780px){ .two { grid-template-columns: 1fr; } }
+
+    .toolbar { margin-top: 10px; display:flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .danger { color: #b42318; }
+    .ok { color: #067647; }
+    .small { font-size: 12px; }
+
+    .samples .sample-title { margin: 12px 0 6px; font-weight: 700; }
+    .statement { white-space: pre-wrap; }
+    .result-header { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
   </style>
 </head>
 <body>
   <h1>Mini Judge</h1>
   <p class="muted">문제 선택 → 코드 제출 → 결과 확인</p>
 
-  <div class="row" style="margin-top:12px;">
+  <!-- Top controls -->
+  <div class="row" style="margin: 12px 0 18px;">
     <label><b>Problem</b></label>
     <select id="problemSelect"></select>
 
@@ -32,199 +50,268 @@
     <span id="statusText" class="muted"></span>
   </div>
 
-  <div class="card" id="problemCard">
-    <h2 id="problemTitle">(no problem)</h2>
-    <div style="margin-bottom:10px;">
-      <span class="pill" id="timePill">Time: -</span>
-      <span class="pill" id="memPill">Memory: -</span>
-      <span class="pill" id="samplePill">Samples: -</span>
+  <!-- Problem statement area -->
+  <div class="card grid" id="problemCard">
+    <div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:baseline;">
+        <h2 id="problemTitle" style="margin:0;">(no problem)</h2>
+        <span class="muted" id="problemId"></span>
+      </div>
+      <div class="meta" style="margin-top:8px;">
+        <span class="pill" id="timeLimitPill">Time: -</span>
+        <span class="pill" id="memLimitPill">Memory: -</span>
+        <span class="pill" id="sampleCountPill">Samples: -</span>
+      </div>
     </div>
 
-    <h3 style="margin: 12px 0 8px;">문제 설명</h3>
-    <pre id="statementBox">(no statement)</pre>
+    <div>
+      <h3 style="margin-top:0;">문제 설명</h3>
+      <div class="statement" id="statementBox">(no statement)</div>
+    </div>
 
-    <h3 style="margin: 12px 0 8px;">예제</h3>
-    <div id="samplesBox" class="muted">(no samples)</div>
+    <div class="samples">
+      <h3 style="margin-top:0;">예제</h3>
+      <div id="samplesBox" class="muted">(no samples)</div>
+    </div>
   </div>
 
-  <h3 style="margin-top:18px;">Code</h3>
+  <!-- Code -->
+  <h2>Code</h2>
   <textarea id="codeArea">print("Hello")</textarea>
 
-  <div class="row" style="margin-top:12px;">
+  <div class="toolbar">
     <button id="submitBtn">Submit</button>
-    <span class="muted" id="submitState">Ready</span>
+    <span class="muted small">제출 후 자동으로 결과를 폴링합니다.</span>
   </div>
 
-  <h3>Result</h3>
-  <pre id="resultBox">(no result)</pre>
+  <!-- Result -->
+  <h2>Result</h2>
+  <div class="card">
+    <div class="result-header">
+      <div class="muted" id="resultHint">아직 제출하지 않았습니다.</div>
+      <div class="muted small" id="lastSid"></div>
+    </div>
+    <pre id="resultBox">(no result)</pre>
+  </div>
 
 <script>
   const problemSelect = document.getElementById('problemSelect');
   const langSelect = document.getElementById('langSelect');
   const refreshBtn = document.getElementById('refreshBtn');
   const submitBtn = document.getElementById('submitBtn');
-
-  const statusText = document.getElementById('statusText');
-  const submitState = document.getElementById('submitState');
-  const resultBox = document.getElementById('resultBox');
   const codeArea = document.getElementById('codeArea');
+  const statusText = document.getElementById('statusText');
 
   const problemTitle = document.getElementById('problemTitle');
-  const timePill = document.getElementById('timePill');
-  const memPill = document.getElementById('memPill');
-  const samplePill = document.getElementById('samplePill');
+  const problemId = document.getElementById('problemId');
+  const timeLimitPill = document.getElementById('timeLimitPill');
+  const memLimitPill = document.getElementById('memLimitPill');
+  const sampleCountPill = document.getElementById('sampleCountPill');
+
   const statementBox = document.getElementById('statementBox');
   const samplesBox = document.getElementById('samplesBox');
 
-  let problemsCache = []; // [{id,title,languages,default_language}...]
+  const resultHint = document.getElementById('resultHint');
+  const resultBox = document.getElementById('resultBox');
+  const lastSid = document.getElementById('lastSid');
 
-  function esc(s) {
-    return (s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  let problemsCache = []; // from /problems
+  let currentProblemInfo = null; // from /problems/{id}
+
+  function escapeHtml(s) {
+    return (s ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 
   async function loadProblems() {
     statusText.textContent = 'Loading problems...';
-    const res = await fetch('/problems');
-    if (!res.ok) {
+    try {
+      const res = await fetch('/problems');
+      const data = await res.json();
+
+      problemsCache = data.problems || [];
+      problemSelect.innerHTML = '';
+
+      // server returns: [{id,title,time_limit_ms,memory_limit_mb,default_language}, ...]
+      for (const p of problemsCache) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.id} — ${p.title}`;
+        problemSelect.appendChild(opt);
+      }
+
+      if (!problemsCache.length) {
+        statusText.textContent = 'No problems found (check /data/problems/<id>/tests)';
+        renderEmptyProblem();
+        return;
+      }
+
+      statusText.textContent = 'Ready';
+      // auto load first problem
+      await loadProblemDetail(problemSelect.value);
+    } catch (e) {
       statusText.textContent = 'Failed to load problems';
-      return;
+      renderEmptyProblem();
+      resultBox.textContent = String(e);
     }
-    const data = await res.json();
-    problemsCache = data.problems || [];
-
-    problemSelect.innerHTML = '';
-    problemsCache.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = `${p.id} — ${p.title}`;
-      problemSelect.appendChild(opt);
-    });
-
-    if (problemsCache.length === 0) {
-      statusText.textContent = 'No problems found';
-      renderEmpty();
-      return;
-    }
-
-    statusText.textContent = 'Ready';
-    await loadProblemDetail(problemSelect.value);
   }
 
-  function renderEmpty() {
+  function renderEmptyProblem() {
     problemTitle.textContent = '(no problem)';
-    timePill.textContent = 'Time: -';
-    memPill.textContent = 'Memory: -';
-    samplePill.textContent = 'Samples: -';
+    problemId.textContent = '';
+    timeLimitPill.textContent = 'Time: -';
+    memLimitPill.textContent = 'Memory: -';
+    sampleCountPill.textContent = 'Samples: -';
     statementBox.textContent = '(no statement)';
-    samplesBox.textContent = '(no samples)';
+    samplesBox.innerHTML = '<span class="muted">(no samples)</span>';
     langSelect.innerHTML = '';
   }
 
-  function renderSamples(samples) {
-    if (!samples || samples.length === 0) {
-      samplesBox.textContent = '(no samples)';
-      return;
-    }
-    samplesBox.innerHTML = samples.map(s => `
-      <div style="margin: 10px 0; padding: 10px; border: 1px solid #e5e7eb; border-radius: 10px;">
-        <div class="muted" style="margin-bottom:6px;">Sample #${s.n}</div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-          <div>
-            <div class="muted">Input</div>
-            <pre style="margin:6px 0 0;">${esc(s.in)}</pre>
+  function renderProblemInfo(info) {
+    currentProblemInfo = info;
+
+    problemTitle.textContent = info.title || info.id;
+    problemId.textContent = `(${info.id})`;
+
+    timeLimitPill.textContent = `Time: ${info.time_limit_ms ?? '-'} ms`;
+    memLimitPill.textContent = `Memory: ${info.memory_limit_mb ?? '-'} MB`;
+    sampleCountPill.textContent = `Samples: ${info.sample_count ?? '-'} shown`;
+
+    // statement (plain text / markdown raw)
+    statementBox.textContent = info.statement || '(no statement)';
+
+    // samples
+    const samples = info.samples || [];
+    if (!samples.length) {
+      samplesBox.innerHTML = '<span class="muted">(no samples)</span>';
+    } else {
+      // Build sample blocks
+      let html = '';
+      for (const s of samples) {
+        html += `
+          <div class="sample-title">Sample ${escapeHtml(s.name)}</div>
+          <div class="two">
+            <div>
+              <div class="muted small" style="margin:0 0 6px;">Input</div>
+              <pre>${escapeHtml(s.input)}</pre>
+            </div>
+            <div>
+              <div class="muted small" style="margin:0 0 6px;">Output</div>
+              <pre>${escapeHtml(s.output)}</pre>
+            </div>
           </div>
-          <div>
-            <div class="muted">Output</div>
-            <pre style="margin:6px 0 0;">${esc(s.out)}</pre>
-          </div>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  async function loadProblemDetail(problemId) {
-    statusText.textContent = 'Loading problem detail...';
-
-    const res = await fetch(`/problems/${encodeURIComponent(problemId)}`);
-    if (!res.ok) {
-      statusText.textContent = 'Failed to load problem detail';
-      renderEmpty();
-      return;
+        `;
+      }
+      samplesBox.innerHTML = html;
     }
 
-    const p = await res.json();
-
-    problemTitle.textContent = `${p.title} (${p.id})`;
-    timePill.textContent = `Time: ${p.time_limit_ms} ms`;
-    memPill.textContent = `Memory: ${p.memory_limit_mb} MB`;
-    samplePill.textContent = `Samples: ${p.sample_count}`;
-
-    statementBox.textContent = (p.statement_md && p.statement_md.trim()) ? p.statement_md : '(no statement)';
-    renderSamples(p.samples);
-
-    // language select
+    // languages
+    const langs = info.languages || ['python3'];
     langSelect.innerHTML = '';
-    (p.languages || []).forEach(lang => {
+    for (const l of langs) {
       const opt = document.createElement('option');
-      opt.value = lang;
-      opt.textContent = lang;
+      opt.value = l;
+      opt.textContent = l;
       langSelect.appendChild(opt);
-    });
-
-    if (p.default_language) {
-      langSelect.value = p.default_language;
+    }
+    if (info.default_language && langs.includes(info.default_language)) {
+      langSelect.value = info.default_language;
     }
 
-    statusText.textContent = 'Ready';
+    // Code header hint (optional): keep code as-is; user chooses language
+  }
+
+  async function loadProblemDetail(problemIdValue) {
+    if (!problemIdValue) return;
+    statusText.textContent = 'Loading problem detail...';
+    try {
+      const res = await fetch(`/problems/${encodeURIComponent(problemIdValue)}`);
+      if (!res.ok) {
+        const t = await res.text();
+        statusText.textContent = 'Failed to load problem detail';
+        resultBox.textContent = t;
+        return;
+      }
+      const info = await res.json();
+      renderProblemInfo(info);
+      statusText.textContent = 'Ready';
+    } catch (e) {
+      statusText.textContent = 'Failed to load problem detail';
+      resultBox.textContent = String(e);
+    }
   }
 
   async function pollResult(sid) {
     while (true) {
       const res = await fetch(`/submissions/${sid}`);
       const data = await res.json();
-      submitState.textContent = `Status: ${data.status || ''}`;
+
+      const st = data.status || '';
+      statusText.textContent = st ? `Status: ${st}` : 'Status: (unknown)';
+      resultHint.textContent = st ? `현재 상태: ${st}` : '현재 상태: (unknown)';
       resultBox.textContent = JSON.stringify(data, null, 2);
-      if (data.status && data.status !== 'QUEUED' && data.status !== 'RUNNING') break;
+
+      if (st && st !== 'QUEUED' && st !== 'RUNNING') break;
       await new Promise(r => setTimeout(r, 700));
     }
   }
 
   async function submit() {
     const pid = problemSelect.value;
+    const lang = langSelect.value;
+
     if (!pid) {
-      alert('문제가 없습니다.');
+      alert('문제가 없습니다. 서버의 /data/problems/<id>/tests 를 확인하세요.');
       return;
     }
 
     submitBtn.disabled = true;
-    submitState.textContent = 'Submitting...';
+    statusText.textContent = 'Submitting...';
+    resultHint.textContent = '제출 중...';
     resultBox.textContent = '(submitting...)';
+    lastSid.textContent = '';
 
-    // 지금은 code만 보내고, 나중에 언어 선택까지 서버에 반영하려면 body에 lang도 같이 실어주면 됨
-    const res = await fetch(`/problems/${encodeURIComponent(pid)}/submit`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ code: codeArea.value })
-    });
+    try {
+      const res = await fetch(`/problems/${encodeURIComponent(pid)}/submit`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ code: codeArea.value, language: lang })
+      });
 
-    if (!res.ok) {
-      const t = await res.text();
+      if (!res.ok) {
+        const t = await res.text();
+        submitBtn.disabled = false;
+        statusText.textContent = 'Submit failed';
+        resultHint.textContent = '제출 실패';
+        resultBox.textContent = t;
+        return;
+      }
+
+      const data = await res.json();
+      const sid = data.submission_id;
+      lastSid.textContent = sid ? `submission_id: ${sid}` : '';
+      statusText.textContent = `Submitted`;
+      resultHint.textContent = '결과 대기 중...';
+
+      await pollResult(sid);
+    } catch (e) {
+      statusText.textContent = 'Submit error';
+      resultHint.textContent = '제출 중 오류';
+      resultBox.textContent = String(e);
+    } finally {
       submitBtn.disabled = false;
-      submitState.textContent = 'Submit failed';
-      resultBox.textContent = t;
-      return;
     }
-
-    const data = await res.json();
-    const sid = data.submission_id;
-    submitState.textContent = `Submitted: ${sid}`;
-    await pollResult(sid);
-    submitBtn.disabled = false;
   }
 
   refreshBtn.addEventListener('click', loadProblems);
-  problemSelect.addEventListener('change', () => loadProblemDetail(problemSelect.value));
   submitBtn.addEventListener('click', submit);
+  problemSelect.addEventListener('change', async () => {
+    await loadProblemDetail(problemSelect.value);
+  });
 
   loadProblems();
 </script>
