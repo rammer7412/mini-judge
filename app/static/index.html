@@ -25,7 +25,7 @@
     @media (max-width: 780px){ .two { grid-template-columns: 1fr; } }
 
     .toolbar { margin-top: 10px; display:flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .danger { color: #5ca7fc; }
+    .danger { color: #b42318; }
     .ok { color: #067647; }
     .small { font-size: 12px; }
 
@@ -268,7 +268,7 @@
 
     // 상단 상태(사람용)
     resultHint.textContent = `Result: ${ui.label}`;
-    resultHint.className = ui.cls;
+    resultHint.className = `muted ${ui.cls === 'muted' ? '' : ui.cls}`.trim();
 
     // 우측 submission_id 표시(이미 lastSid 쓰고 있지만, 혹시 대비)
     if (data?.submission_id) lastSid.textContent = `submission_id: ${data.submission_id}`;
@@ -308,8 +308,14 @@
   async function pollResult(sid) {
     while (true) {
       const res = await fetch(`/submissions/${sid}`);
+      if (!res.ok) {
+        const t = await res.text();
+        statusText.textContent = 'Status: ERROR';
+        resultHint.textContent = 'Result: Error';
+        resultBox.textContent = t;
+        break;
+      }
       const data = await res.json();
-
       const done = renderResultCard(data);
 
       if (done) break;
