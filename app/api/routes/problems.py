@@ -1,31 +1,24 @@
 from fastapi import APIRouter
-from services.problems_service import (
-    list_problem_ids,
-    load_meta,
-    load_statement,
-    load_samples,
-)
+from services import problems as problems_service
 
 router = APIRouter()
 
 @router.get("/problems")
 def get_problems():
-    problems = []
-    for pid in list_problem_ids():
-        # 폴더명이 pid여도 meta["id"]가 다를 수 있어서 meta 기반으로 내려줌
-        meta = load_meta(pid)
-        problems.append({
-            "id": meta["id"],
-            "title": meta["title"],
-            "languages": meta["languages"],
-            "default_language": meta["default_language"],
+    items = []
+    for pid in problems_service.list_problem_ids():
+        info = problems_service.get_problem_info(pid)
+        items.append({
+            "id": pid,
+            "title": info["title"],
+            "time_limit_ms": info["time_limit_ms"],
+            "memory_limit_mb": info["memory_limit_mb"],
+            "languages": info["languages"],
+            "default_language": info["default_language"],
+            "sample_count": info["sample_count"],
         })
-    return {"problems": problems}
+    return {"problems": items}
 
 @router.get("/problems/{problem_id}")
-def get_problem_detail(problem_id: str):
-    meta = load_meta(problem_id)
-    detail = dict(meta)
-    detail["statement_md"] = load_statement(problem_id)
-    detail["samples"] = load_samples(problem_id, int(meta["sample_count"]))
-    return detail
+def get_problem(problem_id: str):
+    return problems_service.get_problem_info(problem_id)

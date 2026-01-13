@@ -1,14 +1,13 @@
-import os
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
-from api.router import api_router
+from routes.ui import router as ui_router
+from routes.health import router as health_router
+from routes.problems import router as problems_router
+from routes.submissions import router as submissions_router
 
 app = FastAPI(title="Mini Judge (MVP)")
-app.include_router(api_router)
 
-BASE_DIR = os.path.dirname(__file__)
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-
-if os.path.isdir(STATIC_DIR):
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.include_router(ui_router)
+app.include_router(health_router)
+app.include_router(problems_router)
+app.include_router(submissions_router)
