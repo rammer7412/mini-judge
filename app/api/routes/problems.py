@@ -1,26 +1,31 @@
-from fastapi import APIRouter, HTTPException
-from services import problems_service
+from fastapi import APIRouter
+from services.problems_service import (
+    list_problem_ids,
+    load_meta,
+    load_statement,
+    load_samples,
+)
 
 router = APIRouter()
 
 @router.get("/problems")
 def get_problems():
-    return {"problems": problems_service.list_problem_ids()}
+    problems = []
+    for pid in list_problem_ids():
+        # 폴더명이 pid여도 meta["id"]가 다를 수 있어서 meta 기반으로 내려줌
+        meta = load_meta(pid)
+        problems.append({
+            "id": meta["id"],
+            "title": meta["title"],
+            "languages": meta["languages"],
+            "default_language": meta["default_language"],
+        })
+    return {"problems": problems}
 
 @router.get("/problems/{problem_id}")
 def get_problem_detail(problem_id: str):
-    if not problems_service.problem_exists(problem_id):
-        raise HTTPException(status_code=404, detail="problem not found")
-
-    meta = problems_service.read_meta(problem_id)
-    statement_md = problems_service.read_statement_md(problem_id)
-
-    sample_count = int(meta.get("sample_count", 1))
-    samples = problems_service.read_samples(problem_id, sample_count)
-
-    return {
-        "id": problem_id,
-        "meta": meta,
-        "statement_md": statement_md,
-        "samples": samples,
-    }
+    meta = load_meta(problem_id)
+    detail = dict(meta)
+    detail["statement_md"] = load_statement(problem_id)
+    detail["samples"] = load_samples(problem_id, int(meta["sample_count"]))
+    return detail

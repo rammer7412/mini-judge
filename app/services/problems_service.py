@@ -1,60 +1,68 @@
-import json
-import os
-from typing import Any, Dict, List
+import os, json
+from typing import List, Dict, Any
+from fastapi import HTTPException
 
-from core.config import DATA_DIR
+DATA_DIR = os.getenv("DATA_DIR", "/data")
 
-def _problem_dir(problem_id: str) -> str:
+def problem_base(problem_id: str) -> str:
     return os.path.join(DATA_DIR, "problems", problem_id)
 
-def _tests_dir(problem_id: str) -> str:
-    return os.path.join(_problem_dir(problem_id), "tests")
+def meta_path(problem_id: str) -> str:
+    return os.path.join(problem_base(problem_id), "meta.json")
 
-def problem_exists(problem_id: str) -> bool:
-    return os.path.isdir(_tests_dir(problem_id))
+def statement_path(problem_id: str) -> str:
+    return os.path.join(problem_base(problem_id), "statement.md")
+
+def tests_dir(problem_id: str) -> str:
+    return os.path.join(problem_base(problem_id), "tests")
+
+def read_text(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+def read_json(path: str) -> Dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def load_meta(problem_id: str) -> Dict[str, Any]:
+    mp = meta_path(problem_id)
+    if not os.path.isfile(mp):
+        raise HTTPException(404, f"meta.json missing for problem '{problem_id}'")
+
+    meta = read_json(mp)
+
+    required = ["id", "title", "time_limit_ms", "memory_limit_mb", "languages", "default_language", "sample_count"]
+    for k in required:
+        if k not in meta:
+            raise HTTPException(500, f"meta.json missing field '{k}' for problem '{problem_id}'")
+    return meta
+
+def load_statement(problem_id: str) -> str:
+    sp = statement_path(problem_id)
+    if not os.path.isfile(sp):
+        return ""
+    return read_text(sp)
+
+def load_samples(problem_id: str, sample_count: int) -> List[Dict[str, Any]]:
+    tdir = tests_dir(problem_id)
+    if not os.path.isdir(tdir):
+        return []
+
+    samples: List[Dict[str, Any]] = []
+    for n in range(1, sample_count + 1):
+        in_path = os.path.join(tdir, f"{n}.in")
+        out_path = os.path.join(tdir, f"{n}.out")
+        if not (os.path.isfile(in_path) and os.path.isfile(out_path)):
+            break
+        samples.append({
+            "n": n,
+            "in": read_text(in_path),
+            "out": read_text(out_path),
+        })
+    return samples
 
 def list_problem_ids() -> List[str]:
     base = os.path.join(DATA_DIR, "problems")
     if not os.path.isdir(base):
         return []
-    ids: List[str] = []
-    for name in sorted(os.listdir(base)):
-        if problem_exists(name):
-            ids.append(name)
-    return ids
-
-def read_meta(problem_id: str) -> Dict[str, Any]:
-    meta_path = os.path.join(_problem_dir(problem_id), "meta.json")
-    if not os.path.isfile(meta_path):
-        # meta.json 없으면 기본값
-        return {
-            "title": problem_id,
-            "time_limit_ms": 1000,
-            "memory_limit_mb": 256,
-            "language": "python3",
-            "sample_count": 1,
-        }
-    with open(meta_path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-def read_statement_md(problem_id: str) -> str:
-    st_path = os.path.join(_problem_dir(problem_id), "statement.md")
-    if not os.path.isfile(st_path):
-        return ""
-    with open(st_path, "r", encoding="utf-8") as f:
-        return f.read()
-
-def read_samples(problem_id: str, sample_count: int) -> List[Dict[str, str]]:
-    tdir = _tests_dir(problem_id)
-    samples: List[Dict[str, str]] = []
-    for i in range(1, sample_count + 1):
-        in_path = os.path.join(tdir, f"{i}.in")
-        out_path = os.path.join(tdir, f"{i}.out")
-        if not (os.path.isfile(in_path) and os.path.isfile(out_path)):
-            break
-        with open(in_path, "r", encoding="utf-8") as f:
-            in_txt = f.read()
-        with open(out_path, "r", encoding="utf-8") as f:
-            out_txt = f.read()
-        samples.append({"in": in_txt, "out": out_txt})
-    return samples
+    return sorted([d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))])
