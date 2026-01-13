@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 
-from routes.health import router as health_router
-from routes.ui import router as ui_router
-from routes.problems import router as problems_router
-from routes.submissions import router as submissions_router
+from api.routes.health import router as health_router
+from api.routes.ui import router as ui_router
+from api.routes.problems import router as problems_router
+from api.routes.submissions import router as submissions_router
 
 api_router = APIRouter()
 api_router.include_router(ui_router)
