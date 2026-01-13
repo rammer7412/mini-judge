@@ -41,7 +41,7 @@ export function renderEmptyProblem(dom) {
   dom.problemId.textContent = '';
   dom.timeLimitPill.textContent = 'Time: -';
   dom.memLimitPill.textContent = 'Memory: -';
-  dom.sampleCountPill.textContent = 'Samples: -';
+  if (dom.sampleCountPill) dom.sampleCountPill.textContent = 'Samples: -';
   dom.statementBox.textContent = '(no statement)';
   dom.samplesBox.innerHTML = '<span class="muted">(no samples)</span>';
   dom.langSelect.innerHTML = '';
@@ -63,7 +63,7 @@ export function renderProblemInfo(dom, info) {
 
   dom.timeLimitPill.textContent = `Time: ${info.time_limit_ms ?? '-'} ms`;
   dom.memLimitPill.textContent = `Memory: ${info.memory_limit_mb ?? '-'} MB`;
-  dom.sampleCountPill.textContent = `Samples: ${info.sample_count ?? '-'} shown`;
+  if (dom.sampleCountPill) dom.sampleCountPill.textContent = `Samples: ${info.sample_count ?? '-'} shown`;
 
   dom.statementBox.textContent = info.statement || '(no statement)';
 

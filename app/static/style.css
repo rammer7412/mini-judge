@@ -7,14 +7,15 @@ body {
   margin: 24px auto;
   padding: 0 16px;
   line-height: 1.5;
-  background: #f5f8ff;
+  background: #ffffff;
+  color: #111111;
 }
 
 h1 { margin: 0 0 8px; }
 h2 { margin: 24px 0 8px; }
 h3 { margin: 18px 0 8px; }
 
-.muted { color: #6b99e9; font-size: 13px; }
+.muted { color: #51607a; font-size: 13px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 select, button { padding: 10px 12px; font-size: 14px; }
 
@@ -28,6 +29,7 @@ textarea {
   border: 1px solid #dbe6ff;
   border-radius: 10px;
   background: #ffffff;
+  color: #111111;
 }
 
 pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -44,7 +46,7 @@ pre {
   border: 1px solid #dbe6ff;
   border-radius: 12px;
   padding: 14px;
-  background: #fff;
+  background: #f5f8ff;
   box-shadow: 0 1px 0 rgba(10, 30, 80, 0.04);
 }
 .grid { display: grid; gap: 12px; }
