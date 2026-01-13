@@ -1,0 +1,80 @@
+:root { color-scheme: light; }
+
+/* Blue-ish theme */
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 980px;
+  margin: 24px auto;
+  padding: 0 16px;
+  line-height: 1.5;
+  background: #f5f8ff;
+}
+
+h1 { margin: 0 0 8px; }
+h2 { margin: 24px 0 8px; }
+h3 { margin: 18px 0 8px; }
+
+.muted { color: #51607a; font-size: 13px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+select, button { padding: 10px 12px; font-size: 14px; }
+
+textarea {
+  width: 100%;
+  height: 360px;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  box-sizing: border-box;
+  border: 1px solid #dbe6ff;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre {
+  background: #eef4ff;
+  padding: 12px;
+  white-space: pre-wrap;
+  border: 1px solid #dbe6ff;
+  border-radius: 8px;
+  overflow: auto;
+}
+
+.card {
+  border: 1px solid #dbe6ff;
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(10, 30, 80, 0.04);
+}
+.grid { display: grid; gap: 12px; }
+.meta { display:flex; gap: 10px; flex-wrap: wrap; align-items:center; }
+.pill {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef4ff;
+  border: 1px solid #dbe6ff;
+}
+
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 780px){ .two { grid-template-columns: 1fr; } }
+
+.toolbar { margin-top: 10px; display:flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+.danger { color: #b42318; }
+.ok { color: #067647; }
+.small { font-size: 12px; }
+
+.samples .sample-title { margin: 12px 0 6px; font-weight: 700; }
+.statement { white-space: pre-wrap; }
+.result-header { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+
+button {
+  background: #ffffff;
+  border: 1px solid #dbe6ff;
+  border-radius: 10px;
+  cursor: pointer;
+}
+button:hover { background: #eef4ff; }
+button:active { transform: translateY(1px); }

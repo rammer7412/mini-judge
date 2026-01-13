@@ -2,11 +2,12 @@ import os
 import uuid
 import json
 import time
+import asyncio
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 import redis
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -20,6 +21,22 @@ DEFAULT_SAMPLE_COUNT = int(os.getenv("DEFAULT_SAMPLE_COUNT", "3"))
 
 r = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 app = FastAPI(title="Mini Judge (MVP)")
+
+
+# -----------------------------------------------------------------------------
+# Submission status
+# -----------------------------------------------------------------------------
+FINAL_STATUSES = {
+    "ACCEPTED",
+    "WRONG_ANSWER",
+    "TIME_LIMIT_EXCEEDED",
+    "MEMORY_LIMIT_EXCEEDED",
+    "RUNTIME_ERROR",
+    "COMPILATION_ERROR",
+    "INTERNAL_ERROR",
+    # worker legacy terminal status
+    "DONE",
+}
 
 # -----------------------------------------------------------------------------
 # Static UI
@@ -190,6 +207,55 @@ def get_problem_info(problem_id: str) -> Dict[str, Any]:
     }
 
 
+
+
+def normalize_submission_view(sid: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Redis에 저장된 submission hash를 UI/클라이언트가 쓰기 좋은 형태로 정규화.
+
+    worker.py가 status=DONE, result=<VERDICT> 형태로 저장하는 구버전도 지원한다.
+
+    반환 포맷은 항상:
+      {submission_id, status, result, detail, raw_status}
+
+    - status: UI가 표시할 "정규화된 상태"(ACCEPTED/WRONG_ANSWER/...)
+    - result: worker가 준 원본 verdict 코드(AC/WA/TLE/RE 등) 또는 메시지
+    """
+    raw_status = (data.get("status") or "").upper()
+    result = (data.get("result") or "").strip()
+    detail = data.get("detail") or ""
+
+    # worker verdict code -> UI status
+    verdict_map = {
+        "AC": "ACCEPTED",
+        "WA": "WRONG_ANSWER",
+        "TLE": "TIME_LIMIT_EXCEEDED",
+        "MLE": "MEMORY_LIMIT_EXCEEDED",
+        "RE": "RUNTIME_ERROR",
+        "CE": "COMPILATION_ERROR",
+        "IE": "INTERNAL_ERROR",
+    }
+
+    def canon(x: str) -> str:
+        x = (x or "").upper()
+        return verdict_map.get(x, x)
+
+    # worker legacy: status=DONE, result=VERDICT
+    if raw_status == "DONE":
+        status = canon(result) if result else "INTERNAL_ERROR"
+    else:
+        # 어떤 구현에서는 status 자체가 AC/WA 처럼 올 수도 있고,
+        # 혹은 ACCEPTED 같은 정규 상태가 올 수도 있음
+        status = canon(raw_status) if raw_status else "QUEUED"
+
+    return {
+        "submission_id": sid,
+        "status": status,
+        "result": result,
+        "detail": detail,
+        "raw_status": raw_status,
+    }
+
 # -----------------------------------------------------------------------------
 # Health
 # -----------------------------------------------------------------------------
@@ -233,7 +299,16 @@ def get_problem(problem_id: str):
 # Submissions API
 # -----------------------------------------------------------------------------
 @app.post("/problems/{problem_id}/submit")
-def submit(problem_id: str, req: SubmitReq):
+async def submit(
+    problem_id: str,
+    req: SubmitReq,
+    wait: bool = Query(True, description="true이면 채점 완료까지 기다린 뒤 결과를 반환"),
+    timeout_s: float = Query(20.0, ge=0.0, description="wait 모드 최대 대기 시간(초)"),
+):
+    """
+    - wait=false: submission_id만 즉시 반환 (기존 방식)
+    - wait=true : 채점 완료까지 서버에서 대기 후 최종 결과 반환 (프론트 폴링 불필요)
+    """
     if not problem_exists(problem_id):
         raise HTTPException(status_code=404, detail=f"Problem '{problem_id}' not found (missing tests folder).")
 
@@ -252,13 +327,41 @@ def submit(problem_id: str, req: SubmitReq):
         "ts": time.time(),
     }
 
-    r.hset(f"sub:{sid}", mapping={"status": "QUEUED", "result": "", "detail": ""})
+    key = f"sub:{sid}"
+    r.hset(key, mapping={"status": "QUEUED", "result": "", "detail": ""})
     r.rpush("queue:submissions", json.dumps(payload))
-    return {"submission_id": sid}
+
+    if not wait:
+        return {"submission_id": sid}
+
+    # wait=true: DONE/최종판정까지 대기
+    deadline = time.time() + float(timeout_s)
+    while True:
+        data = r.hgetall(key) or {}
+        raw_status = (data.get("status") or "").upper()
+
+        # worker가 바로 최종판정(status=ACCEPTED 등)으로 저장하는 경우도 대응
+        if raw_status in FINAL_STATUSES:
+            return normalize_submission_view(sid, data)
+
+        if time.time() >= deadline:
+            # 타임아웃: 현재 상태를 그대로 반환(프론트는 필요하면 /submissions/{sid}로 추가 확인 가능)
+            out = normalize_submission_view(sid, data)
+            out["detail"] = (out.get("detail") or "") + "\n(timeout waiting for result)"
+            return out
+
+        await asyncio.sleep(0.2)
+
 
 
 @app.get("/submissions/{sid}")
 def get_result(sid: str):
+    key = f"sub:{sid}"
+    if not r.exists(key):
+        raise HTTPException(status_code=404, detail="submission not found")
+    data = r.hgetall(key)
+    return normalize_submission_view(sid, data)
+
     key = f"sub:{sid}"
     if not r.exists(key):
         raise HTTPException(status_code=404, detail="submission not found")
