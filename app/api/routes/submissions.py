@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 
-from app.core.redis_client import get_redis
-from app.schemas.submissions import SubmitReq, SubmitResp
-from app.services.submissions_service import enqueue_submission, fetch_submission_result
-from app.services.problems_service import get_problem_info
+from core.redis_client import get_redis
+from schemas.submissions import SubmitReq, SubmitResp
+from services.submissions_service import enqueue_submission, fetch_submission_result
+from services.problems_service import get_problem_info
 
 router = APIRouter()
 

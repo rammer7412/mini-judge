@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.schemas.problems import ProblemListResp, ProblemListItem, ProblemDetailResp
-from app.services.problems_service import list_problem_ids, get_problem_info
+from schemas.problems import ProblemListResp, ProblemListItem, ProblemDetailResp
+from services.problems_service import list_problem_ids, get_problem_info
 
 router = APIRouter()
 
