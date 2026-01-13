@@ -25,7 +25,7 @@
     @media (max-width: 780px){ .two { grid-template-columns: 1fr; } }
 
     .toolbar { margin-top: 10px; display:flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .danger { color: #b42318; }
+    .danger { color: #5ca7fc; }
     .ok { color: #067647; }
     .small { font-size: 12px; }
 
@@ -115,6 +115,23 @@
   const resultBox = document.getElementById('resultBox');
   const lastSid = document.getElementById('lastSid');
 
+  const STATUS_TO_UI = {
+    // 진행중
+    QUEUED: { label: 'Queued', cls: 'muted', done: false },
+    RUNNING: { label: 'Running', cls: 'muted', done: false },
+
+    // 최종 판정
+    ACCEPTED: { label: 'Correct', cls: 'ok', done: true },
+    WRONG_ANSWER: { label: 'Wrong', cls: 'danger', done: true },
+    TIME_LIMIT_EXCEEDED: { label: 'Timeout', cls: 'danger', done: true },
+    MEMORY_LIMIT_EXCEEDED: { label: 'Memory Limit', cls: 'danger', done: true },
+    RUNTIME_ERROR: { label: 'Error', cls: 'danger', done: true },
+    COMPILATION_ERROR: { label: 'Compile Error', cls: 'danger', done: true },
+    INTERNAL_ERROR: { label: 'Error', cls: 'danger', done: true },
+
+    // 혹시 worker가 다른 키를 쓰면 여기에 추가하면 됨
+  };
+
   let problemsCache = []; // from /problems
   let currentProblemInfo = null; // from /problems/{id}
 
@@ -140,7 +157,7 @@
       for (const p of problemsCache) {
         const opt = document.createElement('option');
         opt.value = p.id;
-        opt.textContent = `${p.id} — ${p.title}`;
+        opt.textContent = `${p.id}. ${p.title}`;
         problemSelect.appendChild(opt);
       }
 
@@ -245,17 +262,57 @@
     }
   }
 
+  function renderResultCard(data) {
+    const stRaw = (data?.status || '').toUpperCase();
+    const ui = STATUS_TO_UI[stRaw] || { label: stRaw || '(unknown)', cls: 'muted', done: false };
+
+    // 상단 상태(사람용)
+    resultHint.textContent = `Result: ${ui.label}`;
+    resultHint.className = ui.cls;
+
+    // 우측 submission_id 표시(이미 lastSid 쓰고 있지만, 혹시 대비)
+    if (data?.submission_id) lastSid.textContent = `submission_id: ${data.submission_id}`;
+
+    // 상단 작은 상태(원본 status)
+    statusText.textContent = stRaw ? `Status: ${stRaw}` : 'Status: (unknown)';
+
+    // 본문: result/detail을 사람이 읽기 좋게
+    const lines = [];
+    lines.push(`status: ${stRaw || '(unknown)'}`);
+
+    const result = data?.result ?? '';
+    const detail = data?.detail ?? '';
+
+    if (result) {
+      lines.push('');
+      lines.push('[result]');
+      lines.push(String(result));
+    }
+    if (detail) {
+      lines.push('');
+      lines.push('[detail]');
+      lines.push(String(detail));
+    }
+
+    // 아무 내용도 없으면 JSON이라도 보여주기
+    if (!result && !detail) {
+      lines.push('');
+      lines.push('[raw]');
+      lines.push(JSON.stringify(data, null, 2));
+    }
+
+    resultBox.textContent = lines.join('\n');
+    return ui.done;
+  }
+
   async function pollResult(sid) {
     while (true) {
       const res = await fetch(`/submissions/${sid}`);
       const data = await res.json();
 
-      const st = data.status || '';
-      statusText.textContent = st ? `Status: ${st}` : 'Status: (unknown)';
-      resultHint.textContent = st ? `현재 상태: ${st}` : '현재 상태: (unknown)';
-      resultBox.textContent = JSON.stringify(data, null, 2);
+      const done = renderResultCard(data);
 
-      if (st && st !== 'QUEUED' && st !== 'RUNNING') break;
+      if (done) break;
       await new Promise(r => setTimeout(r, 700));
     }
   }
