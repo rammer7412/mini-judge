@@ -1,123 +1,60 @@
 import json
-from pathlib import Path
+import os
 from typing import Any, Dict, List
 
-from fastapi import HTTPException
+from core.config import DATA_DIR
 
-from app.core.config import settings
+def _problem_dir(problem_id: str) -> str:
+    return os.path.join(DATA_DIR, "problems", problem_id)
 
-def problems_root() -> Path:
-    return Path(settings.DATA_DIR) / "problems"
-
-def problem_path(problem_id: str) -> Path:
-    return problems_root() / problem_id
-
-def tests_dir(problem_id: str) -> Path:
-    return problem_path(problem_id) / "tests"
+def _tests_dir(problem_id: str) -> str:
+    return os.path.join(_problem_dir(problem_id), "tests")
 
 def problem_exists(problem_id: str) -> bool:
-    return tests_dir(problem_id).is_dir()
-
-def safe_read_text(path: Path) -> str:
-    try:
-        return path.read_text(encoding="utf-8")
-    except Exception:
-        return ""
-
-def safe_read_json(path: Path) -> Dict[str, Any]:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    return os.path.isdir(_tests_dir(problem_id))
 
 def list_problem_ids() -> List[str]:
-    root = problems_root()
-    if not root.is_dir():
+    base = os.path.join(DATA_DIR, "problems")
+    if not os.path.isdir(base):
         return []
-    out: List[str] = []
-    for p in sorted(root.iterdir(), key=lambda x: x.name):
-        if p.is_dir() and (p / "tests").is_dir():
-            out.append(p.name)
-    return out
+    ids: List[str] = []
+    for name in sorted(os.listdir(base)):
+        if problem_exists(name):
+            ids.append(name)
+    return ids
 
-def normalize_meta(problem_id: str, meta: Dict[str, Any]) -> Dict[str, Any]:
-    title = meta.get("title") or problem_id
-    time_limit_ms = int(meta.get("time_limit_ms") or 1000)
-    memory_limit_mb = int(meta.get("memory_limit_mb") or 256)
+def read_meta(problem_id: str) -> Dict[str, Any]:
+    meta_path = os.path.join(_problem_dir(problem_id), "meta.json")
+    if not os.path.isfile(meta_path):
+        # meta.json 없으면 기본값
+        return {
+            "title": problem_id,
+            "time_limit_ms": 1000,
+            "memory_limit_mb": 256,
+            "language": "python3",
+            "sample_count": 1,
+        }
+    with open(meta_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-    languages = meta.get("languages")
-    if not isinstance(languages, list) or not languages:
-        languages = ["python3"]
+def read_statement_md(problem_id: str) -> str:
+    st_path = os.path.join(_problem_dir(problem_id), "statement.md")
+    if not os.path.isfile(st_path):
+        return ""
+    with open(st_path, "r", encoding="utf-8") as f:
+        return f.read()
 
-    default_language = meta.get("default_language") or languages[0]
-
-    # sample_count: meta.json 우선, 없으면 DEFAULT_SAMPLE_COUNT
-    sample_count = meta.get("sample_count", settings.DEFAULT_SAMPLE_COUNT)
-    try:
-        sample_count = int(sample_count)
-    except Exception:
-        sample_count = settings.DEFAULT_SAMPLE_COUNT
-
-    if sample_count < 0:
-        sample_count = 0
-    if sample_count > settings.MAX_SAMPLE_COUNT_HARD_LIMIT:
-        sample_count = settings.MAX_SAMPLE_COUNT_HARD_LIMIT
-
-    return {
-        "id": meta.get("id") or problem_id,
-        "title": title,
-        "time_limit_ms": time_limit_ms,
-        "memory_limit_mb": memory_limit_mb,
-        "languages": languages,
-        "default_language": default_language,
-        "sample_count": sample_count,
-    }
-
-def load_samples_from_tests(problem_id: str, sample_count: int) -> List[Dict[str, str]]:
-    tdir = tests_dir(problem_id)
-    if not tdir.is_dir() or sample_count <= 0:
-        return []
-
+def read_samples(problem_id: str, sample_count: int) -> List[Dict[str, str]]:
+    tdir = _tests_dir(problem_id)
     samples: List[Dict[str, str]] = []
     for i in range(1, sample_count + 1):
-        inp = tdir / f"{i}.in"
-        out = tdir / f"{i}.out"
-        if inp.is_file() and out.is_file():
-            samples.append(
-                {
-                    "name": str(i),
-                    "input": safe_read_text(inp).rstrip("\n"),
-                    "output": safe_read_text(out).rstrip("\n"),
-                }
-            )
-        else:
+        in_path = os.path.join(tdir, f"{i}.in")
+        out_path = os.path.join(tdir, f"{i}.out")
+        if not (os.path.isfile(in_path) and os.path.isfile(out_path)):
             break
+        with open(in_path, "r", encoding="utf-8") as f:
+            in_txt = f.read()
+        with open(out_path, "r", encoding="utf-8") as f:
+            out_txt = f.read()
+        samples.append({"in": in_txt, "out": out_txt})
     return samples
-
-def get_problem_info(problem_id: str) -> Dict[str, Any]:
-    pdir = problem_path(problem_id)
-    if not (pdir / "tests").is_dir():
-        raise HTTPException(status_code=404, detail=f"Problem '{problem_id}' not found.")
-
-    meta_raw = safe_read_json(pdir / "meta.json")
-    meta = normalize_meta(problem_id, meta_raw)
-
-    statement = safe_read_text(pdir / "statement.md") or safe_read_text(pdir / "statement.txt")
-    if not statement:
-        statement = "(no statement) Create data/problems/<id>/statement.md"
-
-    samples = load_samples_from_tests(problem_id, meta["sample_count"])
-
-    return {
-        "id": problem_id,
-        "title": meta["title"],
-        "time_limit_ms": meta["time_limit_ms"],
-        "memory_limit_mb": meta["memory_limit_mb"],
-        "languages": meta["languages"],
-        "default_language": meta["default_language"],
-        "sample_count": meta["sample_count"],
-        "statement": statement,
-        "samples": samples,
-        # 필요하면 meta_raw를 UI로 같이 던질 수 있음:
-        # "meta": meta_raw
-    }

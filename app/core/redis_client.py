@@ -1,8 +1,4 @@
-from functools import lru_cache
 import redis
+from core.config import REDIS_URL
 
-from app.core.config import settings
-
-@lru_cache(maxsize=1)
-def get_redis() -> redis.Redis:
-    return redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+r = redis.Redis.from_url(REDIS_URL, decode_responses=True)

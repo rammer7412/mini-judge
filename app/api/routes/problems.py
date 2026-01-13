@@ -1,27 +1,26 @@
-from fastapi import APIRouter
-
-from schemas.problems import ProblemListResp, ProblemListItem, ProblemDetailResp
-from services.problems_service import list_problem_ids, get_problem_info
+from fastapi import APIRouter, HTTPException
+from services import problems_service
 
 router = APIRouter()
 
-@router.get("/problems", response_model=ProblemListResp)
+@router.get("/problems")
 def get_problems():
-    items = []
-    for pid in list_problem_ids():
-        info = get_problem_info(pid)
-        items.append(
-            ProblemListItem(
-                id=pid,
-                title=info["title"],
-                time_limit_ms=info["time_limit_ms"],
-                memory_limit_mb=info["memory_limit_mb"],
-                default_language=info["default_language"],
-            )
-        )
-    return ProblemListResp(problems=items)
+    return {"problems": problems_service.list_problem_ids()}
 
-@router.get("/problems/{problem_id}", response_model=ProblemDetailResp)
-def get_problem(problem_id: str):
-    info = get_problem_info(problem_id)
-    return ProblemDetailResp(**info)
+@router.get("/problems/{problem_id}")
+def get_problem_detail(problem_id: str):
+    if not problems_service.problem_exists(problem_id):
+        raise HTTPException(status_code=404, detail="problem not found")
+
+    meta = problems_service.read_meta(problem_id)
+    statement_md = problems_service.read_statement_md(problem_id)
+
+    sample_count = int(meta.get("sample_count", 1))
+    samples = problems_service.read_samples(problem_id, sample_count)
+
+    return {
+        "id": problem_id,
+        "meta": meta,
+        "statement_md": statement_md,
+        "samples": samples,
+    }

@@ -1,22 +1,20 @@
-from fastapi import APIRouter
-
-from core.redis_client import get_redis
-from schemas.submissions import SubmitReq, SubmitResp
-from services.submissions_service import enqueue_submission, fetch_submission_result
-from services.problems_service import get_problem_info
+from fastapi import APIRouter, HTTPException
+from schemas.submissions import SubmitReq
+from services import problems_service, submissions_service
 
 router = APIRouter()
 
-@router.post("/problems/{problem_id}/submit", response_model=SubmitResp)
+@router.post("/problems/{problem_id}/submit")
 def submit(problem_id: str, req: SubmitReq):
-    r = get_redis()
-    info = get_problem_info(problem_id)
-    lang = req.language or info["default_language"]
-    sid = enqueue_submission(r, problem_id=problem_id, code=req.code, language=lang)
-    return SubmitResp(submission_id=sid)
+    if not problems_service.problem_exists(problem_id):
+        raise HTTPException(status_code=404, detail="Problem not found (missing tests folder).")
+
+    sid = submissions_service.create_submission(problem_id, req.code)
+    return {"submission_id": sid}
 
 @router.get("/submissions/{sid}")
 def get_result(sid: str):
-    r = get_redis()
-    data = fetch_submission_result(r, sid)
+    data = submissions_service.get_submission(sid)
+    if not data:
+        raise HTTPException(status_code=404, detail="submission not found")
     return {"submission_id": sid, **data}
