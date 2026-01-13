@@ -14,7 +14,7 @@ h1 { margin: 0 0 8px; }
 h2 { margin: 24px 0 8px; }
 h3 { margin: 18px 0 8px; }
 
-.muted { color: #51607a; font-size: 13px; }
+.muted { color: #6b99e9; font-size: 13px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 select, button { padding: 10px 12px; font-size: 14px; }
 
