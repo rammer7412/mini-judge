@@ -1,4 +1,4 @@
-import { escapeHtml } from './utils.js';
+import { escapeHtml, renderMarkdown } from './utils.js';
 
 export const STATUS_TO_UI = {
   QUEUED: { label: 'Queued', cls: 'muted', done: false },
@@ -66,7 +66,7 @@ export function renderProblemInfo(dom, info) {
   dom.memLimitPill.textContent = `Memory: ${info.memory_limit_mb ?? '-'} MB`;
   if (dom.sampleCountPill) dom.sampleCountPill.textContent = `Samples: ${info.sample_count ?? '-'} shown`;
 
-  dom.statementBox.textContent = info.statement || '(no statement)';
+  dom.statementBox.innerHTML = renderMarkdown(info.statement || '(no statement)');
 
   const samples = info.samples || [];
   if (!samples.length) {

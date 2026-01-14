@@ -76,7 +76,7 @@ pre {
 .small { font-size: 12px; }
 
 .samples .sample-title { margin: 12px 0 6px; font-weight: 700; }
-.statement { white-space: pre-wrap; }
+.statement { white-space: normal; }
 .result-header { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 
 button {
@@ -87,3 +87,25 @@ button {
 }
 button:hover { background: #eef4ff; }
 button:active { transform: translateY(1px); }
+
+
+/* Markdown rendering */
+.statement h1 { font-size: 20px; margin: 10px 0 8px; }
+.statement h2 { font-size: 17px; margin: 14px 0 8px; }
+.statement h3 { font-size: 15px; margin: 12px 0 6px; }
+.statement p { margin: 8px 0; }
+.statement ul, .statement ol { margin: 8px 0 8px 20px; padding: 0; }
+.statement li { margin: 4px 0; }
+
+.statement code {
+  background: #eef4ff;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #dbe6ff;
+}
+
+.statement pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
