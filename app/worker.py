@@ -1,5 +1,7 @@
 import os, json, tempfile, subprocess, resource, time, re
 from pathlib import Path
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import redis
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -129,7 +131,9 @@ def main():
             "language": language,
             "user_name": user_name,
             "submitted_at": submitted_at,
+            "submitted_at_kst": kst_str(submitted_at),
             "finished_at": finished_at,
+            "finished_at_kst": kst_str(finished_at),
             "verdict": str(verdict),
             "status": status_canon,
             "detail": detail,
