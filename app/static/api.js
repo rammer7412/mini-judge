@@ -10,11 +10,11 @@ export async function fetchProblemDetail(problemId) {
   return await res.json();
 }
 
-export async function submitCode(problemId, language, code) {
+export async function submitCode(problemId, language, code, userName) {
   const res = await fetch(`/problems/${encodeURIComponent(problemId)}/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, language }),
+    body: JSON.stringify({ code, language, user_name: userName || '' }),
   });
   if (!res.ok) throw new Error(await res.text());
   return await res.json(); // { submission_id: ... }

@@ -17,6 +17,7 @@ export function getDom() {
   return {
     problemSelect: document.getElementById('problemSelect'),
     langSelect: document.getElementById('langSelect'),
+    userNameInput: document.getElementById('userNameInput'),
     submitBtn: document.getElementById('submitBtn'),
     codeArea: document.getElementById('codeArea'),
     statusText: document.getElementById('statusText'),
@@ -144,6 +145,9 @@ export function renderResult(dom, data) {
 
   const lines = [];
   lines.push(`status: ${stRaw || '(unknown)'}`);
+
+  const userName = (data?.user_name || '').trim();
+  if (userName) lines.push(`user_name: ${userName}`);
 
   const result = data?.result ?? '';
   const detail = data?.detail ?? '';

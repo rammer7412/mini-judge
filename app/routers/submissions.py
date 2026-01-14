@@ -35,7 +35,14 @@ async def submit(
     if lang not in info["languages"]:
         raise HTTPException(status_code=400, detail=f"Unsupported language: {lang}")
 
-    sid = create_submission(problem_id=problem_id, code=req.code, language=lang)
+    # username (no auth) - 필수
+    user_name = (req.user_name or "").strip()
+    if not user_name:
+        raise HTTPException(status_code=400, detail="user_name is required")
+    if len(user_name) > 32:
+        raise HTTPException(status_code=400, detail="user_name too long (max 32)")
+
+    sid = create_submission(problem_id=problem_id, code=req.code, language=lang, user_name=user_name)
 
     if not wait:
         return {"submission_id": sid}

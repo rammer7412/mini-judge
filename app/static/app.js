@@ -11,6 +11,25 @@ import {
 
 const dom = getDom();
 
+// ---------------------------------------------------------------------------
+// Username (no auth): store locally so user doesn't need to retype each time
+// ---------------------------------------------------------------------------
+const NAME_KEY = 'mini_judge_user_name';
+
+function getUserName() {
+  const v = (dom.userNameInput?.value || '').trim();
+  return v;
+}
+
+function initUserName() {
+  if (!dom.userNameInput) return;
+  const saved = localStorage.getItem(NAME_KEY);
+  if (saved) dom.userNameInput.value = saved;
+  dom.userNameInput.addEventListener('input', () => {
+    localStorage.setItem(NAME_KEY, getUserName());
+  });
+}
+
 function setSubmitEnabled(enabled) {
   dom.submitBtn.disabled = !enabled;
   dom.submitBtn.style.opacity = enabled ? '1' : '0.6';
@@ -56,9 +75,16 @@ async function loadProblemDetail(problemId) {
 async function onSubmit() {
   const pid = dom.problemSelect.value;
   const lang = dom.langSelect.value;
+  const userName = getUserName();
 
   if (!pid) {
     alert('문제가 없습니다. 서버의 /data/problems/<id>/tests 를 확인하세요.');
+    return;
+  }
+
+  if (!userName) {
+    alert('이름을 입력해야 제출할 수 있어요.');
+    dom.userNameInput?.focus();
     return;
   }
 
@@ -69,7 +95,7 @@ async function onSubmit() {
 
   try {
     // ✅ 폴링 없이: submit 요청이 채점 완료까지 기다린 뒤 최종 결과 JSON을 반환
-    const data = await submitCode(pid, lang, dom.codeArea.value);
+    const data = await submitCode(pid, lang, dom.codeArea.value, userName);
 
     // data = {submission_id, status, result, detail, raw_status}
     renderResult(dom, data);
@@ -85,3 +111,5 @@ dom.submitBtn.addEventListener('click', onSubmit);
 dom.problemSelect.addEventListener('change', () => loadProblemDetail(dom.problemSelect.value));
 
 loadProblems();
+
+initUserName();

@@ -44,20 +44,32 @@ def normalize_submission_view(sid: str, data: Dict[str, Any]) -> Dict[str, Any]:
         "result": result,
         "detail": detail,
         "raw_status": raw_status,
+        "user_name": (data.get("user_name") or "").strip(),
     }
 
 
-def create_submission(problem_id: str, code: str, language: str) -> str:
+def create_submission(problem_id: str, code: str, language: str, user_name: str = "") -> str:
     sid = str(uuid.uuid4())
+    ts = time.time()
     payload: Dict[str, Any] = {
         "id": sid,
         "problem_id": problem_id,
         "code": code,
         "language": language,
-        "ts": time.time(),
+        "user_name": user_name,
+        "ts": ts,
     }
     key = f"sub:{sid}"
-    r.hset(key, mapping={"status": "QUEUED", "result": "", "detail": ""})
+    r.hset(
+        key,
+        mapping={
+            "status": "QUEUED",
+            "result": "",
+            "detail": "",
+            "user_name": user_name,
+            "submitted_at": str(ts),
+        },
+    )
     r.rpush("queue:submissions", json.dumps(payload))
     return sid
 
