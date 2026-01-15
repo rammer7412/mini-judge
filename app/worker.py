@@ -1,6 +1,6 @@
 import os, json, tempfile, subprocess, resource, time, re
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import redis
 
@@ -11,6 +11,19 @@ TIME_LIMIT_SEC = 2.0
 SUBMISSION_LOG_DIR = os.getenv("SUBMISSION_LOG_DIR", "/data/submissions")
 
 r = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+
+
+
+def kst_str(ts: float) -> str:
+    """Format a unix timestamp as KST (Asia/Seoul) time string.
+
+    Uses ZoneInfo if available; falls back to fixed UTC+9 (KST has no DST).
+    """
+    try:
+        tz = ZoneInfo("Asia/Seoul")
+    except Exception:
+        tz = timezone(timedelta(hours=9))
+    return datetime.fromtimestamp(float(ts), tz=tz).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _safe_pid(pid: str) -> str:
