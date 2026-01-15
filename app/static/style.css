@@ -7,7 +7,8 @@ body {
   margin: 24px auto;
   padding: 0 16px;
   line-height: 1.5;
-  background: #f5f8ff;
+  background: #ffffff;
+  color: #111111;
 }
 
 h1 { margin: 0 0 8px; }
@@ -16,7 +17,14 @@ h3 { margin: 18px 0 8px; }
 
 .muted { color: #51607a; font-size: 13px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-select, button { padding: 10px 12px; font-size: 14px; }
+select, button, input { padding: 10px 12px; font-size: 14px; }
+
+input {
+  border: 1px solid #dbe6ff;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111111;
+}
 
 textarea {
   width: 100%;
@@ -28,6 +36,7 @@ textarea {
   border: 1px solid #dbe6ff;
   border-radius: 10px;
   background: #ffffff;
+  color: #111111;
 }
 
 pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -44,7 +53,7 @@ pre {
   border: 1px solid #dbe6ff;
   border-radius: 12px;
   padding: 14px;
-  background: #fff;
+  background: #f5f8ff;
   box-shadow: 0 1px 0 rgba(10, 30, 80, 0.04);
 }
 .grid { display: grid; gap: 12px; }
@@ -67,7 +76,7 @@ pre {
 .small { font-size: 12px; }
 
 .samples .sample-title { margin: 12px 0 6px; font-weight: 700; }
-.statement { white-space: pre-wrap; }
+.statement { white-space: normal; }
 .result-header { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 
 button {
@@ -78,3 +87,40 @@ button {
 }
 button:hover { background: #eef4ff; }
 button:active { transform: translateY(1px); }
+
+
+/* Markdown rendering */
+.statement h1 { font-size: 20px; margin: 10px 0 8px; }
+.statement h2 { font-size: 17px; margin: 14px 0 8px; }
+.statement h3 { font-size: 15px; margin: 12px 0 6px; }
+.statement p { margin: 8px 0; }
+.statement ul, .statement ol { margin: 8px 0 8px 20px; padding: 0; }
+.statement li { margin: 4px 0; }
+
+.statement code {
+  background: #eef4ff;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #dbe6ff;
+}
+
+.statement pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+
+/* Result card layout */
+.result-grid { display: grid; gap: 10px; }
+.result-row { display: grid; grid-template-columns: 130px 1fr; gap: 12px; align-items: center; }
+@media (max-width: 780px) { .result-row { grid-template-columns: 110px 1fr; } }
+
+.result-label { font-weight: 700; color: #111827; }
+.result-value { color: #111827; }
+
+.result-code {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}

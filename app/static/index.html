@@ -6,7 +6,7 @@
   <title>Mini Judge</title>
 
   <!-- CSS 분리 -->
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
   <h1>Mini Judge</h1>
@@ -19,6 +19,9 @@
 
     <label><b>Language</b></label>
     <select id="langSelect"></select>
+
+    <label><b>Name</b></label>
+    <input id="userNameInput" type="text" placeholder="이름" maxlength="32" />
 
     <span id="statusText" class="muted"></span>
   </div>
@@ -33,7 +36,6 @@
       <div class="meta" style="margin-top:8px;">
         <span class="pill" id="timeLimitPill">Time: -</span>
         <span class="pill" id="memLimitPill">Memory: -</span>
-        <span class="pill" id="sampleCountPill">Samples: -</span>
       </div>
     </div>
 
@@ -59,14 +61,33 @@
 
   <!-- Result -->
   <h2>Result</h2>
-  <div class="card">
-    <div class="result-header">
-      <div class="muted" id="resultHint">아직 제출하지 않았습니다.</div>
-      <div class="muted small" id="lastSid"></div>
+  <div class="card" id="resultCard">
+    <div class="result-grid">
+      <div class="result-row">
+        <div class="result-label">Problem</div>
+        <div class="result-value" id="resultProblem">-</div>
+      </div>
+      <div class="result-row">
+        <div class="result-label">User Name</div>
+        <div class="result-value" id="resultUser">-</div>
+      </div>
+      <div class="result-row">
+        <div class="result-label">Result</div>
+        <div class="result-value result-code muted" id="resultCode">-</div>
+      </div>
     </div>
-    <pre id="resultBox">(no result)</pre>
+
+    <div class="muted small" id="resultDesc" style="margin-top:10px;">
+      AC: 정답 / WA: 오답 / TLE: 시간 초과 / MLE: 메모리 초과 / RE: 런타임 에러 / CE: 컴파일 에러 / IE: 내부 오류
+    </div>
+
+    <details id="resultDetailWrap" style="margin-top:10px; display:none;">
+      <summary class="muted small">자세히 보기</summary>
+      <pre id="resultDetail" style="margin-top:8px;">(no detail)</pre>
+    </details>
   </div>
 
-  <script type="module" src="./app.js"></script>
+
+  <script type="module" src="/static/app.js"></script>
 </body>
 </html>

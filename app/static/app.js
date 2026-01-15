@@ -6,26 +6,50 @@ import {
   renderProblemInfo,
   renderSubmitting,
   renderSubmitError,
-  renderSubmitted,
+  renderResult,
 } from './ui.js';
-import { pollUntilDone, cancelPolling } from './poller.js';
 
 const dom = getDom();
-let problemsCache = [];
+
+// ---------------------------------------------------------------------------
+// Username (no auth): store locally so user doesn't need to retype each time
+// ---------------------------------------------------------------------------
+const NAME_KEY = 'mini_judge_user_name';
+
+function getUserName() {
+  const v = (dom.userNameInput?.value || '').trim();
+  return v;
+}
+
+function initUserName() {
+  if (!dom.userNameInput) return;
+  const saved = localStorage.getItem(NAME_KEY);
+  if (saved) dom.userNameInput.value = saved;
+  dom.userNameInput.addEventListener('input', () => {
+    localStorage.setItem(NAME_KEY, getUserName());
+  });
+}
+
+function setSubmitEnabled(enabled) {
+  dom.submitBtn.disabled = !enabled;
+  dom.submitBtn.style.opacity = enabled ? '1' : '0.6';
+  dom.submitBtn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+  dom.submitBtn.textContent = enabled ? 'Submit' : 'Judging...';
+}
 
 async function loadProblems() {
   dom.statusText.textContent = 'Loading problems...';
   try {
     const data = await fetchProblems();
-    problemsCache = data.problems || [];
+    const problems = data.problems || [];
 
-    if (!problemsCache.length) {
+    if (!problems.length) {
       dom.statusText.textContent = 'No problems found (check /data/problems/<id>/tests)';
       renderEmptyProblem(dom);
       return;
     }
 
-    renderProblemList(dom, problemsCache);
+    renderProblemList(dom, problems);
     dom.statusText.textContent = 'Ready';
     await loadProblemDetail(dom.problemSelect.value);
   } catch (e) {
@@ -51,25 +75,35 @@ async function loadProblemDetail(problemId) {
 async function onSubmit() {
   const pid = dom.problemSelect.value;
   const lang = dom.langSelect.value;
+  const userName = getUserName();
 
   if (!pid) {
     alert('문제가 없습니다. 서버의 /data/problems/<id>/tests 를 확인하세요.');
     return;
   }
 
-  // (중요) 재제출하면 이전 폴링 끊기
-  cancelPolling();
+  if (!userName) {
+    alert('이름을 입력해야 제출할 수 있어요.');
+    dom.userNameInput?.focus();
+    return;
+  }
+
+  // ✅ 제출 순간 비활성화
+  setSubmitEnabled(false);
 
   renderSubmitting(dom);
 
   try {
-    const data = await submitCode(pid, lang, dom.codeArea.value);
-    const sid = data.submission_id;
+    // ✅ 폴링 없이: submit 요청이 채점 완료까지 기다린 뒤 최종 결과 JSON을 반환
+    const data = await submitCode(pid, lang, dom.codeArea.value, userName);
 
-    renderSubmitted(dom, sid);
-    await pollUntilDone(dom, sid);
+    // data = {submission_id, status, result, detail, raw_status}
+    renderResult(dom, data);
   } catch (e) {
     renderSubmitError(dom, String(e));
+  } finally {
+    // ✅ 결과가 나오면 다시 활성화
+    setSubmitEnabled(true);
   }
 }
 
@@ -77,3 +111,5 @@ dom.submitBtn.addEventListener('click', onSubmit);
 dom.problemSelect.addEventListener('change', () => loadProblemDetail(dom.problemSelect.value));
 
 loadProblems();
+
+initUserName();
