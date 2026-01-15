@@ -109,3 +109,18 @@ button:active { transform: translateY(1px); }
   border: none;
   padding: 0;
 }
+
+
+/* Result card layout */
+.result-grid { display: grid; gap: 10px; }
+.result-row { display: grid; grid-template-columns: 130px 1fr; gap: 12px; align-items: center; }
+@media (max-width: 780px) { .result-row { grid-template-columns: 110px 1fr; } }
+
+.result-label { font-weight: 700; color: #111827; }
+.result-value { color: #111827; }
+
+.result-code {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}

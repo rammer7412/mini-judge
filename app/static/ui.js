@@ -1,6 +1,18 @@
 import { escapeHtml, renderMarkdown } from './utils.js';
 
-export const STATUS_TO_UI = {
+export const STATUS_TO_SHORT = {
+  QUEUED: 'QUEUED',
+  RUNNING: 'RUNNING',
+  ACCEPTED: 'AC',
+  WRONG_ANSWER: 'WA',
+  TIME_LIMIT_EXCEEDED: 'TLE',
+  MEMORY_LIMIT_EXCEEDED: 'MLE',
+  RUNTIME_ERROR: 'RE',
+  COMPILATION_ERROR: 'CE',
+  INTERNAL_ERROR: 'IE',
+};
+
+const STATUS_TO_UI = {
   QUEUED: { label: 'Queued', cls: 'muted', done: false },
   RUNNING: { label: 'Running', cls: 'muted', done: false },
 
@@ -31,9 +43,12 @@ export function getDom() {
     statementBox: document.getElementById('statementBox'),
     samplesBox: document.getElementById('samplesBox'),
 
-    resultHint: document.getElementById('resultHint'),
-    resultBox: document.getElementById('resultBox'),
-    lastSid: document.getElementById('lastSid'),
+    resultProblem: document.getElementById('resultProblem'),
+    resultUser: document.getElementById('resultUser'),
+    resultCode: document.getElementById('resultCode'),
+    resultDesc: document.getElementById('resultDesc'),
+    resultDetailWrap: document.getElementById('resultDetailWrap'),
+    resultDetail: document.getElementById('resultDetail'),
   };
 }
 
@@ -106,68 +121,108 @@ export function renderProblemInfo(dom, info) {
 
 export function renderSubmitting(dom) {
   dom.statusText.textContent = 'Submitting...';
-  dom.resultHint.textContent = '제출 중...';
-  dom.resultHint.className = 'muted';
-  dom.resultBox.textContent = '(submitting...)';
-  dom.lastSid.textContent = '';
+
+  if (dom.resultProblem) dom.resultProblem.textContent = dom.problemSelect?.value || '-';
+  if (dom.resultUser) dom.resultUser.textContent = (dom.userNameInput?.value || '').trim() || '-';
+
+  if (dom.resultCode) {
+    dom.resultCode.textContent = '...';
+    dom.resultCode.className = 'result-code muted';
+  }
+
+  if (dom.resultDetailWrap) dom.resultDetailWrap.style.display = 'none';
 }
 
 export function renderSubmitError(dom, errText) {
   dom.statusText.textContent = 'Submit failed';
-  dom.resultHint.textContent = '제출 실패';
-  dom.resultHint.className = 'muted danger';
-  dom.resultBox.textContent = errText;
+
+  if (dom.resultCode) {
+    dom.resultCode.textContent = 'ERR';
+    dom.resultCode.className = 'result-code danger';
+  }
+
+  if (dom.resultDetailWrap && dom.resultDetail) {
+    dom.resultDetailWrap.style.display = 'block';
+    dom.resultDetail.textContent = String(errText || '(no detail)');
+  }
 }
 
 export function renderSubmitted(dom, sid) {
-  dom.lastSid.textContent = sid ? `submission_id: ${sid}` : '';
-  dom.statusText.textContent = 'Submitted';
-  dom.resultHint.textContent = '결과 대기 중...';
-  dom.resultHint.className = 'muted';
+  dom.statusText.textContent = 'Judging...';
+
+  if (dom.resultProblem) dom.resultProblem.textContent = dom.problemSelect?.value || '-';
+  if (dom.resultUser) dom.resultUser.textContent = (dom.userNameInput?.value || '').trim() || '-';
+
+  if (dom.resultCode) {
+    dom.resultCode.textContent = '...';
+    dom.resultCode.className = 'result-code muted';
+  }
+
+  // sid/details are hidden by default
+  if (dom.resultDetailWrap) dom.resultDetailWrap.style.display = 'none';
+  if (dom.resultDetail) dom.resultDetail.textContent = '';
 }
 
 export function renderPollingError(dom, errText) {
   dom.statusText.textContent = 'Status: ERROR';
-  dom.resultHint.textContent = 'Result: Error';
-  dom.resultHint.className = 'muted danger';
-  dom.resultBox.textContent = errText;
+
+  if (dom.resultCode) {
+    dom.resultCode.textContent = 'ERR';
+    dom.resultCode.className = 'result-code danger';
+  }
+
+  if (dom.resultDetailWrap && dom.resultDetail) {
+    dom.resultDetailWrap.style.display = 'block';
+    dom.resultDetail.textContent = String(errText || '(no detail)');
+  }
 }
 
 export function renderResult(dom, data) {
   const stRaw = (data?.status || '').toUpperCase();
   const ui = STATUS_TO_UI[stRaw] || { label: stRaw || '(unknown)', cls: 'muted', done: false };
+  const short = STATUS_TO_SHORT[stRaw] || (stRaw || '(unknown)');
 
-  dom.resultHint.textContent = `Result: ${ui.label}`;
-  dom.resultHint.className = `muted ${ui.cls === 'muted' ? '' : ui.cls}`.trim();
+  if (dom.resultProblem) dom.resultProblem.textContent = (data?.problem_id || dom.problemSelect?.value || '-');
+  if (dom.resultUser) dom.resultUser.textContent = (data?.user_name || '').trim() || (dom.userNameInput?.value || '').trim() || '-';
 
-  if (data?.submission_id) dom.lastSid.textContent = `submission_id: ${data.submission_id}`;
+  if (dom.resultCode) {
+    dom.resultCode.textContent = short;
+    dom.resultCode.className = `result-code ${ui.cls === 'muted' ? 'muted' : ui.cls}`.trim();
+  }
+
   dom.statusText.textContent = stRaw ? `Status: ${stRaw}` : 'Status: (unknown)';
-
-  const lines = [];
-  lines.push(`status: ${stRaw || '(unknown)'}`);
-
-  const userName = (data?.user_name || '').trim();
-  if (userName) lines.push(`user_name: ${userName}`);
 
   const result = data?.result ?? '';
   const detail = data?.detail ?? '';
 
-  if (result) {
-    lines.push('');
-    lines.push('[result]');
-    lines.push(String(result));
-  }
-  if (detail) {
-    lines.push('');
-    lines.push('[detail]');
-    lines.push(String(detail));
-  }
-  if (!result && !detail) {
-    lines.push('');
-    lines.push('[raw]');
-    lines.push(JSON.stringify(data, null, 2));
+  const showDetail = Boolean(result || detail || data?.submission_id);
+  if (dom.resultDetailWrap && dom.resultDetail) {
+    if (!showDetail) {
+      dom.resultDetailWrap.style.display = 'none';
+    } else {
+      dom.resultDetailWrap.style.display = 'block';
+      const lines = [];
+      if (data?.submission_id) lines.push(`submission_id: ${data.submission_id}`);
+      lines.push(`status: ${stRaw || '(unknown)'}`);
+      if (result) {
+        lines.push('');
+        lines.push('[result]');
+        lines.push(String(result));
+      }
+      if (detail) {
+        lines.push('');
+        lines.push('[detail]');
+        lines.push(String(detail));
+      }
+      if (!result && !detail) {
+        lines.push('');
+        lines.push('[raw]');
+        lines.push(JSON.stringify(data, null, 2));
+      }
+      dom.resultDetail.textContent = lines.join('\n');
+    }
   }
 
-  dom.resultBox.textContent = lines.join('\n');
   return ui.done;
 }
+
