@@ -81,3 +81,15 @@ def main():
 
 if __name__ == "__main__":
     main()
+def kst_str(ts: float) -> str:
+    """Return KST time string for a unix timestamp.
+
+    Uses ZoneInfo if available; falls back to fixed UTC+9 (KST has no DST).
+    """
+    try:
+        tz = ZoneInfo("Asia/Seoul")
+    except Exception:
+        tz = timezone(timedelta(hours=9))
+    return datetime.fromtimestamp(float(ts), tz=tz).strftime("%Y-%m-%d %H:%M:%S")
+
+
