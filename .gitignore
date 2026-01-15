@@ -18,3 +18,8 @@ __pycache__/
 *.pyc
 *.pyo
 
+# runtime logs (keep on server, don't commit)
+data/submissions.jsonl
+data/submissions/*.jsonl
+data/submissions/**/*.jsonl
+

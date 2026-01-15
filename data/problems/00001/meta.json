@@ -1,8 +1,11 @@
 {
-  "id": "1",
-  "title": "A + B",
+  "id": "00001",
+  "title": "A+B",
   "time_limit_ms": 1000,
   "memory_limit_mb": 256,
-  "languages": ["python3"],
-  "default_language": "python3"
+  "languages": [
+    "python3"
+  ],
+  "default_language": "python3",
+  "sample_count": 3
 }

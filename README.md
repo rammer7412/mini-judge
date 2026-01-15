@@ -1,17 +1,59 @@
 # Mini Judge (MVP)
 
-A minimal online judge you can run for tutoring assignments. Students submit **Python 3** code, the server runs it against per-problem testcases, and returns a verdict (**AC/WA/TLE/RE**).  
-This MVP uses **FastAPI** (with built-in Swagger UI), **Redis** as a queue, and a **worker** process that executes submissions with basic resource limits.
+A minimal online judge for tutoring assignments.
 
----
-
-## Description
+Students enter a **User Name** and submit **Python 3** code in the web UI. The server runs the code against per-problem testcases and returns a verdict such as **AC/WA/TLE/RE**.
 
 - **Language**: Python 3 (standard library only)
 - **API**: FastAPI + Uvicorn (Swagger UI at `/docs`)
 - **Queue/State**: Redis
-- **Judge Worker**: runs user code via `python3 -I` and compares stdout with expected outputs
+- **Judge Worker**: executes submissions and compares stdout with expected outputs
+- **Logs**: per-problem **JSONL** submission log files
 - **Deploy**: OCI (Oracle Cloud Infrastructure) Ubuntu VM + Docker Compose
+
+> ⚠️ Note: This is an MVP for learning/tutoring. If you plan to expose it publicly, you should harden security (sandboxing, network isolation, rate limiting, etc.).
+
+---
+
+## Features
+
+### Web UI
+- Select a problem → write code → submit → view result
+- **User Name is required** (submission is blocked if empty)
+- `statement.md` is rendered as **Markdown** (not raw `#` text)
+- Result view is simplified:
+  - **Problem**
+  - **User Name**
+  - **Result** (AC/WA/TLE/RE/…)
+  - plus a small legend explaining verdict codes
+
+### Problem format
+
+Problems live under `data/problems/<problem_id>/`:
+
+```
+data/problems/<problem_id>/
+├── meta.json
+├── statement.md
+└── tests/
+    ├── 1.in
+    ├── 1.out
+    ├── 2.in
+    ├── 2.out
+    └── ...
+```
+
+- `problem_id` is typically a **5-digit string** (e.g., `00001`).
+- Testcases are paired by index: `k.in` and `k.out`.
+
+### Submission logging (JSONL)
+
+Every finished submission is appended to a JSONL file per problem:
+
+- `data/submissions/problem_<problem_id>.jsonl`
+
+Each line is one JSON object (easy to parse later).  
+Timestamps include **KST (Asia/Seoul)** human-readable fields.
 
 ---
 
@@ -20,15 +62,18 @@ This MVP uses **FastAPI** (with built-in Swagger UI), **Redis** as a queue, and 
 ### High-level components
 
 - **api** (FastAPI)
-  - Accepts submissions
-  - Pushes jobs to Redis queue
-  - Exposes submission status/result endpoints
+  - serves the Web UI (static files)
+  - lists problems and problem details
+  - accepts submissions and enqueues jobs in Redis
+  - returns final verdict/result
 - **worker**
-  - Pops jobs from Redis queue
-  - Executes code with time/memory/file limits
-  - Produces verdict and stores result back to Redis
+  - pops jobs from Redis
+  - executes user code with basic time limits
+  - compares output with expected answers
+  - writes verdict back to Redis
+  - appends a JSONL log record on completion
 - **redis**
-  - Stores job queue and submission status/result
+  - job queue + submission status/result store
 
 ### Repository tree (example)
 
@@ -36,18 +81,25 @@ This MVP uses **FastAPI** (with built-in Swagger UI), **Redis** as a queue, and 
 mini-judge/
 ├── docker-compose.yml
 ├── app/
-│   ├── main.py              # FastAPI endpoints: submit + result query
-│   ├── worker.py            # Judge worker: executes code and compares outputs
-│   └── requirements.txt     # FastAPI/Redis deps
+│   ├── main.py
+│   ├── worker.py
+│   ├── requirements.txt
+│   └── static/
+│       ├── index.html
+│       ├── style.css
+│       ├── ui.js
+│       └── utils.js
 └── data/
-    └── problems/
-        └── <problem_id>/
-            └── tests/
-                ├── 1.in
-                ├── 1.out
-                ├── 2.in
-                ├── 2.out
-                └── ...
+    ├── problems/
+    │   └── 00001/
+    │       ├── meta.json
+    │       ├── statement.md
+    │       └── tests/
+    │           ├── 1.in
+    │           ├── 1.out
+    │           └── ...
+    └── submissions/
+        └── problem_00001.jsonl
 ```
 
 ---
@@ -56,118 +108,135 @@ mini-judge/
 
 - Ubuntu 22.04 VM (OCI)
 - Docker + Docker Compose installed
-- OCI networking configured:
+- OCI networking rules:
   - Inbound **TCP 22** for SSH
-  - Inbound **TCP 80** for HTTP (Swagger/UI access)
+  - Inbound **TCP 80** for HTTP (Web UI / Swagger)
 
-> Notes:
-> - Even if the service is running correctly on the VM (`curl http://localhost/docs` works), you **must** open TCP 80 in OCI Security List ingress rules to access it from your PC browser.
+> Even if `curl http://localhost/docs` works on the VM, you must open inbound TCP **80** in OCI security rules to access it from your local PC.
 
 ---
 
-## Deploy
+## Deploy (OCI)
 
 ### 1) SSH into the VM
 
-**Windows PowerShell example:**
+PowerShell example:
+
 ```powershell
 ssh -i "C:\path\to\your_private_key.key" ubuntu@<PUBLIC_IP>
 ```
 
 **Important**
-- Never commit the SSH private key to GitHub (even if you add it to `.gitignore` later).
+- Never commit your SSH private key to GitHub (even temporarily).
 - If SSH fails with a permissions warning on Windows, ensure the private key file is not publicly readable.
 
 ### 2) Fix Docker permission denied (if needed)
 
 If you see:
-`permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock`
+
+`permission denied while trying to connect to the Docker daemon socket ...`
 
 Run:
+
 ```bash
 sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
 newgrp docker
-```
-
-Test:
-```bash
 docker run --rm hello-world
 ```
 
-### 3) Start the services
+### 3) Start services
 
-From your project directory on the VM:
 ```bash
 cd ~/mini-judge
 docker compose up -d --build
 docker compose ps
 ```
 
-### 4) Confirm the API is healthy (inside the VM)
+### 4) Health check (inside the VM)
 
 ```bash
 curl -s http://localhost/health
 curl -I http://localhost/docs
 ```
 
-### 5) Open Swagger UI from your PC
+### 5) Open UI/Swagger from your PC
 
-In your browser:
-- `http://<PUBLIC_IP>/docs`
+- Web UI: `http://<PUBLIC_IP>/`
+- Swagger: `http://<PUBLIC_IP>/docs`
 
-### 6) Add a sample problem (testcases)
+---
 
-Problems are identified by the folder name under `data/problems/<problem_id>/tests`.
+## Add a sample problem
 
-Example: create a `sum` problem:
+Example: create problem `00001`:
+
 ```bash
 cd ~/mini-judge
-mkdir -p data/problems/sum/tests
-printf "1 2\n" > data/problems/sum/tests/1.in
-printf "3\n"   > data/problems/sum/tests/1.out
-```
+mkdir -p data/problems/00001/tests
 
-### 7) Submit and check results (via Swagger)
-
-- Submit endpoint: `POST /problems/{problem_id}/submit`
-  - Set `problem_id` to your folder name (e.g., `sum`)
-  - Body example:
-
-```json
+cat > data/problems/00001/meta.json << 'EOF'
 {
-  "code": "a, b = map(int, input().split())\nprint(a + b)\n"
+  "id": "00001",
+  "title": "A+B",
+  "time_limit_ms": 1000,
+  "memory_limit_mb": 256,
+  "languages": ["python3"],
+  "default_language": "python3",
+  "sample_count": 3
 }
+EOF
+
+cat > data/problems/00001/statement.md << 'EOF'
+# A+B
+
+Given two integers A and B, print A+B.
+
+## Input
+A and B are given in one line, separated by a space.
+
+## Output
+Print A+B.
+EOF
+
+printf "1 2\n" > data/problems/00001/tests/1.in
+printf "3\n"   > data/problems/00001/tests/1.out
 ```
 
-- Result endpoint: `GET /submissions/{submission_id}`
-  - Expect: `status=DONE`, `result=AC`, `detail=All tests passed`
+---
+
+## Logs: view or download JSONL
+
+### View on the server
+
+```bash
+tail -n 50 data/submissions/problem_00001.jsonl
+```
+
+### Download to your local PC (Windows)
+
+If you have an SSH config alias (example: `Host mini-judge`), you can use:
+
+```powershell
+scp mini-judge:~/mini-judge/data/submissions/problem_00001.jsonl .
+```
+
+(You can also automate this using a `.bat` script.)
 
 ---
 
 ## Troubleshooting
 
-### 1) Docker daemon socket permission denied
-Symptom:
-- `permission denied while trying to connect to the Docker daemon socket ...`
+### 1) Works on VM, but not in your browser (most common)
 
-Fix:
-```bash
-sudo systemctl enable --now docker
-sudo usermod -aG docker $USER
-newgrp docker
-docker run --rm hello-world
-```
-
-### 2) Works on VM, but not in your browser (most common)
-Symptom:
+**Symptom**
 - VM: `curl -I http://localhost/docs` returns `200 OK`
 - PC: cannot connect to `http://<PUBLIC_IP>/docs`
 
-Cause:
+**Cause**
 - OCI inbound rule for port 80 is missing or incorrect.
 
-Fix (OCI Console):
+**Fix (OCI Console)**
 - Subnet **Security List** → **Ingress Rules**
   - Source CIDR: `0.0.0.0/0`
   - Protocol: TCP
@@ -177,39 +246,46 @@ Common mistake:
 - Setting **Source Port Range = 80** and **Destination = All**  
   This does **not** open the server’s port 80 for browsers.
 
-### 3) Port 80 is not listening
+### 2) Port 80 is not listening
+
 Check on the VM:
+
 ```bash
 sudo ss -lntp | grep ':80'
 docker compose ps
 ```
-Expected:
-- `LISTEN` on `0.0.0.0:80`
-- `docker compose ps` shows mapping `0.0.0.0:80->8000/tcp`
 
-If not, restart:
-```bash
-docker compose down
-docker compose up -d --build
-```
+### 3) Swagger returns 404 (Problem not found)
 
-### 4) Swagger submission returns 404 (Problem not found)
 Cause:
-- `problem_id` does not match an existing folder under `data/problems/`.
+- `problem_id` does not match a folder under `data/problems/`.
 
 Fix:
-- Confirm folder names:
+
 ```bash
 ls data/problems
 ```
-- Use the exact folder name as `problem_id` (e.g., `sum`).
 
-### 5) Submission stuck in QUEUED
+Use the exact folder name as `problem_id`.
+
+### 4) Submission stuck in QUEUED
+
 Cause:
-- Worker container not running.
+- worker container not running.
 
 Fix:
+
 ```bash
 docker compose ps
 docker compose logs -n 100 worker
 ```
+
+---
+
+## Security Notes (MVP)
+
+This system executes user-submitted code. For public exposure, you should consider:
+- running submissions in a stricter sandbox (separate container/VM)
+- disabling outbound network for user code
+- enforcing strict CPU/memory/time limits
+- adding rate limiting and authentication if needed
